@@ -90,10 +90,10 @@ h2 { font: 700 1.6rem/1.2 var(--display); margin: 0; }
   border: 1px solid var(--line); }
 .detail[hidden] { display: none; }
 .detail:not([hidden]) { grid-template-columns: minmax(0, 210px) minmax(0, 1fr); gap: 8px 22px; align-items: start; }
-.stagegrid { display: flex; flex-wrap: wrap; gap: 6px 16px; }
-.stagegrid div { display: grid; grid-template-columns: auto auto; gap: 0 4px; align-items: baseline; }
-.stagegrid span { grid-column: 1 / -1; color: var(--muted); font-size: .82rem; }
-.stagegrid small { color: var(--muted); }
+.stagegrid { border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.stagegrid th, .stagegrid td { padding: 1px 12px 1px 0; text-align: right; }
+.stagegrid th { color: var(--muted); font-weight: 400; font-size: .82rem; }
+.stagegrid tr.pct td { color: var(--muted); font-size: .82rem; }
 .rounds { display: grid; grid-template-columns: repeat(4, 44px); gap: 6px; align-items: end; height: 92px; }
 .rounds div { display: grid; grid-template-rows: auto 1fr auto; height: 100%; text-align: center; font-size: .8rem; }
 .rounds i { align-self: end; display: block; background: #6f4f2f; border-radius: 3px 3px 0 0; min-height: 1px; }
@@ -301,14 +301,13 @@ document.querySelectorAll(".dataset").forEach((sec, i) => sec.querySelectorAll("
   td.innerHTML = b.cost.length ? b.cost.map(ic).join(b.cost_is_or ? " / " : " ") : "no food";
 }));
 // Each stage's value with its percentile among all birds at that stage (all five stages, whatever is ticked).
-const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
 function stageTable(b, birds) {
-  const all = Object.values(birds), names = ["Starting hand", "Round 1", "Round 2", "Round 3", "Round 4"];
-  const cells = names.map((n, k) => {
-    const v = b.draw_value_by_round[k], pct = Math.round(100 * all.filter(x => x.draw_value_by_round[k] < v).length / all.length);
-    return `<div><span>${n}</span><b>${fmt(v)}</b> <small>${ord(Math.min(99, pct))}</small></div>`;
-  });
-  return `<div class="stagegrid">${cells.join("")}</div>`;
+  const all = Object.values(birds), names = ["S", "R1", "R2", "R3", "R4"];
+  const titles = ["Starting hand", "Round 1", "Round 2", "Round 3", "Round 4"];
+  const pct = names.map((_, k) => Math.min(99, Math.round(100 * all.filter(x => x.draw_value_by_round[k] < b.draw_value_by_round[k]).length / all.length)));
+  return `<table class="stagegrid"><tr>${names.map((n, k) => `<th title="${titles[k]}">${n}</th>`).join("")}</tr>
+    <tr>${b.draw_value_by_round.map(v => `<td><b>${fmt(v)}</b></td>`).join("")}</tr>
+    <tr class="pct">${pct.map(p => `<td>${p}%</td>`).join("")}</tr></table>`;
 }
 // Share of the bird's plays in each round, as bars.
 function roundBars(b) {
@@ -394,7 +393,7 @@ function showDetail(el) {
   detail.innerHTML = `<div class="big"><div class="bcard ${b.color || "none"}">${cardHtml(b)}</div></div><div class="info"><h3>${esc(b.name)}</h3>
     <dl class="facts">
     ${row(esc(b.hlabel), `<b class="big-num">${fmt(b.hv)}</b> ${esc(b.hunit)}`, `margin of error ± ${(1.96 * b.hse).toFixed(1)}`)}
-    ${b.draw_value_by_round ? row("By stage", stageTable(b, BIRDS), "value, then its rank among all birds at that stage") : ""}
+    ${b.draw_value_by_round ? row("By stage", stageTable(b, BIRDS), "S is the starting hand and R1 to R4 are rounds. The percent is the share of birds it beats at that stage.") : ""}
     ${b.hide.includes("kept_rate") ? "" : row("Kept from starting hand", `<b>${Math.round(100 * b.kept_rate)}%</b>`)}
     ${row("Plays", `<b>${plays}</b> per 100 games`, "counting all three players")}
     ${b.play_credit_by_round ? row("Round played", roundBars(b), `usually round ${b.avg_round ? b.avg_round.toFixed(1) : "–"}`) : ""}
